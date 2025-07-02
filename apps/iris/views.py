@@ -145,7 +145,7 @@ def ai_logs():
     return render_template('iris/user_logs.html',title='AI로그이력', results=user_logs)
 
 @iris.route('/api/predict', methods=['POST'])
-#@rate_limit('API_KEY_RATE_LIMIT')
+#@rate_limit('API_KEY_RATE_LIMIT')  count login 포함됨
 @csrf.exempt
 def api_predict():
     auth_header = request.headers.get('X-API-Key')
@@ -157,7 +157,7 @@ def api_predict():
     is_valid_key = False
     # 모든 유효키 가져오기
     active_api_keys = APIKey.query.filter_by(is_active=True).all()
-    # 유효기중에 포함되는지 확인
+    # 유효키 집합에 포함되는지 확인
     for api_key_entry in active_api_keys:
 #        if check_password_hash(api_key_entry.key_hash, auth_header):  # 암호화시
         if api_key_entry.key_string == auth_header:
