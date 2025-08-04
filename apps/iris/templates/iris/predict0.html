@@ -1,33 +1,31 @@
 <!-- apps/iris/templates/iris/predict.html -->
-{%  extends  "iris_base.html"  %} 
+{%  extends  "base.html"  %} 
 {% block title %}Iris 품종 예측{% endblock %}
-{% block iris_content %}
-{# <div class="container dt-auth-main"> #} {# dt-auth-main을 container와 함께 사용하여 중앙 정렬 및 너비 제한 #}
+{% block content %}
+<div class="container dt-auth-main"> {# dt-auth-main을 container와 함께 사용하여 중앙 정렬 및 너비 제한 #}
     <div class="card">
         <header class="card-header text-center py-2">IRIS품종예측</header> {# Bootstrapcard-header클래스추가#}
       <section class="card-body py-3"> {# Bootstrap card-body 클래스 추가 #}
             <form action="{{ url_for('iris.iris_predict', next=request.args.get('next')) }}" method="POST" novalidate="novalidate">
                 {{ form.csrf_token }} 
-
-                <div class="row g-3 mb-3">
-                    <div class="col-md-6">
-                        <label for="sepal_length" class="form-label">세팔 길이 (cm)</label>
-                        <input type="number" step="0.1" class="form-control" id="sepal_length" name="sepal_length" required value="0.0">
+                <div class="row g-3 mb-2"> {# Bootstrap 그리드 시스템 사용, g-3은 컬럼 간 간격, mb-4는 아래 마진 #}
+                    <div class="col-md-6"> {# 각 입력 필드가 중간 화면 이상에서 6칸(1/2)씩 차지 #}
+                        <label for="sepal_length" class="form-label">Sepal Length:</label>
+                        <input name="sepal_length" type="number" step="any" class="form-control" id="sepal_length" required value="{{ sepal_length|default('') }}">
                     </div>
                     <div class="col-md-6">
-                        <label for="sepal_width" class="form-label">세팔 너비 (cm)</label>
-                        <input type="number" step="0.1" class="form-control" id="sepal_width" name="sepal_width" required value="0.0">
+                        <label for="sepal_width" class="form-label">Sepal Width:</label>
+                        <input name="sepal_width" type="number" step="any" class="form-control" id="sepal_width" required value="{{ sepal_width|default('') }}">
                     </div>
                     <div class="col-md-6">
-                        <label for="petal_length" class="form-label">페탈 길이 (cm)</label>
-                        <input type="number" step="0.1" class="form-control" id="petal_length" name="petal_length" required value="0.0">
+                        <label for="petal_length" class="form-label">Petal Length:</label>
+                        <input name="petal_length" type="number" step="any" class="form-control" id="petal_length" required value="{{ petal_length|default('') }}">
                     </div>
                     <div class="col-md-6">
-                        <label for="petal_width" class="form-label">페탈 너비 (cm)</label>
-                        <input type="number" step="0.1" class="form-control" id="petal_width" name="petal_width" required value="0.0">
+                        <label for="petal_width" class="form-label">Petal Width:</label>
+                        <input name="petal_width" type="number" step="any" class="form-control" id="petal_width" required value="{{ petal_width|default('') }}">
                     </div>
                 </div>
-
                 <div class="d-grid"> {# 버튼을 블록 레벨로 만들고 그리드 간격 추가 #}
                     <button type="submit" class="btn btn-primary btn-lg">예측</button> {# 크고 파란색 버튼 #}
                 </div>
@@ -73,5 +71,7 @@
             </ul>
         </section>
         {% endif %}
+
     </div>
+</div>
 {% endblock %}

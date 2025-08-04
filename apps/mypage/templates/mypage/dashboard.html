@@ -1,33 +1,91 @@
-{% extends 'base.html' %}
-{% block title %}내 대시보드{% endblock %}
+<!-- apps/mypagex/templates/mypage/dashboard.html -->
+{% extends "base.html" %}
+{% block title %}{{ title }}{% endblock %}
+
 {% block content %}
-    <h4 class="alert alert-primary">대시보드</h4>
-    <a href="/mypage/account">계정정보</a>|<a href="/mypage/apimanage">API관리|<a href="/mypage/apiusage">사용량|<a href="/mypage/logs">추론결과</a>
-    <div class="dashboard-grid">
-        <div class="dashboard-card">
-            <h3>내 계정 정보</h3>
-            <p><strong>이메일:</strong> {{ current_user.email }}</p>
-            <p><strong>가입일:</strong> {{ current_user.created_at.strftime('%Y-%m-%d') }}</p>
-            <p><strong>마지막 로그인:</strong> {{ current_user.last_login_at.strftime('%Y-%m-%d %H:%M:%S') if current_user.last_login_at else 'N/A' }}</p>
-        </div>
-        <div class="dashboard-card">
-            <h3>API Key 관리</h3>
-            <p>나만의 API Key를 발급받고 사용량을 확인하세요.</p>
-            <a href="{{ url_for('mypage.api_keys') }}" class="btn btn-secondary">API Key 보기/관리</a>   
-{#            <a href="{{ url_for('mypage.api_keys') }}" class="btn btn-secondary">API Key 보기/관리</a>   #}
-        </div>
-        <div class="dashboard-card">
-            <h3>내 사용량 기록</h3>
-            <p>로그인 및 API Key를 통한 AI 서비스 사용 기록을 확인합니다.</p>
-{#            <a href="{{ url_for('mypage.usage_history') }}" class="btn btn-secondary">사용량 기록 보기</a>  #}
-{#            <a href="{{ url_for('mypage.usage_history') }}" class="btn btn-secondary">사용량 기록 보기</a>  #}
-        </div>
-        <div class="dashboard-card">
-            <h3>내 추론 결과</h3>
-            <p>내가 요청한 붓꽃 분류 추론 결과들을 확인합니다.</p>
-{#            <a href="{{ url_for('iris.results') }}" class="btn btn-secondary">추론 결과 보기</a>   #}
-{#            <a href="{{ url_for('iris.results') }}" class="btn btn-secondary">추론 결과 보기</a>   #}
+<h5 class="mb-4"></h5>
+
+<div class="row">
+    <div class="col-md-4 mb-4">
+        <div class="card text-white bg-primary mb-3 h-100">
+            <div class="card-header">내 API 키</div>
+            <div class="card-body">
+                <h5 class="card-title">{{ total_api_keys }} 개</h5> 
+                <p class="card-text">API 키를 관리하여 서비스에 접근하세요.</p>
+                <a href="{{ url_for('mypage.api_keys') }}" class="btn btn-light btn-sm">관리하기</a>  
+            </div>
         </div>
     </div>
-{% endblock %}
+    <div class="col-md-4 mb-4">
+        <div class="card text-white bg-success mb-3 h-100">
+            <div class="card-header">추론 결과</div>
+            <div class="card-body">
+                <h5 class="card-title">{{unconfirmed_results}}개/{{ inference_results }}개</h5>
+                <p class="card-text">현재 미확인된 추론 결과수입니다.</p>
+                    <a href="{{ url_for('iris.results') }}" class="btn btn-light btn-sm">확인하기</a> 
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 mb-4">
+        <div class="card text-white bg-warning mb-3 h-100">
+            <div class="card-header">접근 로그</div>
+            <div class="card-body">
+                <h5 class="card-title">{{ logs_results }} 개</h5>
+                <p class="card-text">Web 및 API Key 접근 로그입니다</p>
+                    <a href="{{ url_for('iris.logs') }}" class="btn btn-light btn-sm">확인하기</a>  
+            </div>
+        </div>
+    </div>
+</div>
+<div class="row mt-4">
+    <div class="col-md-6 mb-4">
+        <div class="card shadow-sm h-100">
+            <div class="card-header">
+                이번 달 총 사용량
+            </div>
+            <div class="card-body">
+                <h3 class="text-center display-4">{{ monthly_usage }} 회</h3>
+                <p class="text-center text-muted">총 사용 횟수는 로그인 및 서비스 사용을 포함합니다.</p>
+                <div class="d-grid">
+{#                    <a href="{{ url_for('mypagex.usage_history') }}" class="btn btn-outline-primary btn-sm">통계 보기</a>  #}
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 mb-4">
+        <div class="card shadow-sm h-100">
+            <div class="card-header"> 최근 사용 로그 </div>
+            <div class="card-body">
+                {% if recent_usage_logs %}
+                <ul class="list-group list-group-flush">
+                    {% for log in recent_usage_logs %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong>{{ log.usage_type.value | upper }}</strong>
+                            {% if log.ai_service %} - {{ log.ai_service.name }}
+                            {% endif %}
+                            <br>
+                            <small class="text-muted">{{ log.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</small>
+                        </div>
+                        <span class="badge bg-secondary rounded-pill">{{ log.usage_count }}</span>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <p class="text-center text-muted">아직 사용 기록이 없습니다.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card shadow-sm">
+            <div class="card-body text-center">
+{#                <a href="{{ url_for('mypage.change_password') }}" class="btn btn-outline-info me-2">비밀번호 변경</a> #}
+            </div>
+        </div>
+    </div>
+</div>
 
+{% endblock %}

@@ -2,6 +2,8 @@
 import os
 from flask import Flask
 from werkzeug.security import generate_password_hash
+
+from apps.dbmodels import Service
 from .extensions import db, migrate, login_manager, csrf
 from apps.admin import MyAdminIndexView, UserAdminView
 #from apps.admin import MyAdminIndexView, UserAdminView,APIKeyAdminView,UsageLogAdminView
@@ -54,6 +56,20 @@ def create_app():     #  factory 함수
     with app.app_context():
         #db.drop_all()         # 운영시에는 커멘트 처리 필요
         db.create_all()       # 테이블 생성
+
+        # 'iris' 서비스가 없으므로 강제 추가
+        if not Service.query.filter_by(servicename='iris').first():
+            iris_service = Service(
+                servicename='iris',
+                price=0,
+                description='꽃잎/꽃받침 길이와 너비로 붓꽃 종류를 예측하는 AI 서비스',
+                keywords='iris, prediction, ai, ml',
+                #service_endpoint='/iris/api/predict'
+                service_endpoint='iris.api.predict'
+            )
+            db.session.add(iris_service)
+            db.session.commit()
+            print("INFO: 'iris' 서비스가 데이터베이스에 추가되었습니다.")
 
         # 최초 관리자 계정 생성
         admin_username = app.config.get('ADMIN_USERNAME')

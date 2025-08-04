@@ -44,7 +44,7 @@ def login():
         if user is not None and user.verify_password(form.password.data): 
             # 사용자 정보 세션 저장
             login_user(user)
-            return redirect(url_for("auth.index"))   # auth.index로 이동
+            return redirect(url_for("main.index"))   # main.index로 이동
         # 로그인 실패 메시지
         flash("이메일 주소 및 비번 확인 필요")
     return render_template("auth/login.html",form=form)

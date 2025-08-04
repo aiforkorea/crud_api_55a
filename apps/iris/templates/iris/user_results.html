@@ -1,7 +1,7 @@
 {# apps/iris/templates/iris/user_results.html #}
-{% extends 'base.html' %} {# base.html에서 부트스트랩 CSS/JS를 불러와야 합니다! #}
+{% extends 'iris_base.html' %} {# base.html에서 부트스트랩 CSS/JS를 불러와야 합니다! #}
 {% block title %}추론 결과{% endblock %}
-{% block content %}
+{% block iris_content %}
     <div class="container mt-4"> {# 전체 내용을 감싸는 부트스트랩 컨테이너, 위쪽 여백(margin-top) 4칸 #}
         <h1 class="mb-4">내 추론 결과</h1> {# 제목에 아래쪽 여백(margin-bottom) 4칸 #}
 

@@ -3,7 +3,8 @@ from flask import Flask, flash, redirect, request, render_template, jsonify, abo
 import pickle, os, uuid 
 import logging, functools
 from apps.extensions import csrf # 이 줄을 추가하여 정의된 csrf 객체를 임포트
-from apps.dbmodels import IRIS, db, User, APIKey, UsageLog, UsageType
+from apps.dbmodels import db, User, APIKey, UsageLog, UsageType, PredictionResult # <-- IRIS는 제거
+from apps.iris.dbmodels import IrisResult # <-- 새로 추가된 경로에서 임포트
 import numpy as np
 from flask_login import current_user, login_required
 from . import mypage
@@ -11,11 +12,54 @@ from .forms import ApiKeyForm
 
 from datetime import datetime, timedelta
 
-@mypage.route('/')
+@mypage.route('/dashboard')
 @login_required
 def dashboard():
     # 내 정보, API 키 발급/관리, 사용량 확인
-    return render_template('mypage/dashboard.html', title='대시보드')
+
+
+    total_api_keys = APIKey.query.filter_by(user_id=current_user.id).count()
+    inference_results = PredictionResult.query.filter_by(user_id=current_user.id).count()
+    unconfirmed_results = PredictionResult.query.filter_by(user_id=current_user.id, confirm=False).count()
+    logs_results = UsageLog.query.filter_by(user_id=current_user.id).count() 
+    # 최근 사용 로그 5개
+    recent_usage_logs = None
+    # UsageLog.query.filter_by(user_id=current_user.id)\
+    #                                .order_by(UsageLog.timestamp.desc())\
+    #                                .limit(5).all()
+    # 이번 달 총 사용량
+    current_month = datetime.now().month
+    current_year = datetime.now().year
+    monthly_usage = 0
+    #db.session.query(func.sum(UsageLog.usage_count))\
+    #                    .filter(UsageLog.user_id == current_user.id)\
+    #                    .filter(extract('month', UsageLog.timestamp) == current_month)\
+    #                    .filter(extract('year', UsageLog.timestamp) == current_year)\
+    #                    .scalar() or 0
+    return render_template('mypage/dashboard.html',
+                           title='마이페이지 대시보드',
+                           total_api_keys=total_api_keys,
+                           inference_results=inference_results,
+                           unconfirmed_results=unconfirmed_results,
+                           logs_results=logs_results, 
+                           recent_usage_logs=recent_usage_logs,
+                           monthly_usage=monthly_usage) 
+# change_password 엔드포인트
+@mypage.route("/change_password", methods=["GET", "POST"])
+@login_required  # 로그인한 사용자만 접근 가능
+def change_password():
+    form = ChangePasswordForm()
+    if form.validate_on_submit():
+        user = User.query.get(current_user.id)
+        if user.verify_password(form.current_password.data):
+            user.password = form.new_password.data
+            db.session.commit()
+            flash("비밀번호가 성공적으로 변경되었습니다.")
+            return redirect(url_for("mypagex.dashboard"))
+        else:
+            flash("현재 비밀번호가 올바르지 않습니다.")
+    return render_template("mypagex/change_password.html", form=form)
+
 
 @mypage.route('/api_keys')
 @login_required

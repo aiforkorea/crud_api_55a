@@ -1,3 +1,4 @@
+# apps/iris/iris_model.py
 # 모델 준비 (최초 1회 실행)
 from sklearn.datasets import load_iris
 from sklearn.linear_model import LogisticRegression
