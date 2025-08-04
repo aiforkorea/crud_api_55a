@@ -11,3 +11,5 @@ class IrisUserForm(FlaskForm):
 #    api_key = PasswordField('api_key', validators=[DataRequired()])
     submit = SubmitField('예측')
 
+class EmptyForm(FlaskForm):
+    pass

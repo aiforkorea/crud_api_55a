@@ -31,7 +31,7 @@ def signup():
         # next 값이 없는 경우는 사용자의 목록 페이지로 redirect
         next_ = request.args.get(next)
         if next_ is None or not next_.startswith("/"):
-            next_ = url_for("auth.index")
+            next_ = url_for("main.index")
         return redirect(next_)
     return render_template("auth/signup.html",form= form)
 # login 엔드포인트

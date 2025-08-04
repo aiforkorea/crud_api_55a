@@ -9,7 +9,7 @@ from apps.dbmodels import PredictionResult, db, APIKey, UsageLog, UsageType, Ser
 from apps.iris.dbmodels import IrisResult
 import numpy as np
 from flask_login import current_user, login_required
-from apps.iris.forms import IrisUserForm
+from apps.iris.forms import EmptyForm, IrisUserForm
 from . import iris
 from datetime import datetime, timedelta
 
@@ -18,9 +18,13 @@ MODEL_PATH = os.path.join(os.path.dirname(__file__), 'model.pkl')
 with open(MODEL_PATH, 'rb') as f:
     model = pickle.load(f)
 
-#TARGET_NAMES = ['setosa', 'versicolor', 'virginica']
+TARGET_NAMES = ['setosa', 'versicolor', 'virginica']
 from apps.config import Config
-TARGET_NAMES = Config.IRIS_LABELS   # 라벨 읽기
+#TARGET_NAMES = Config.IRIS_LABELS   # 라벨 읽기
+
+#0: Iris-Setosa
+#1: Iris-Versicolour
+#2: Iris-Virginica
 
 # AI 사용량 제한 데코레이터
 def rate_limit(limit_config_key):
@@ -73,7 +77,7 @@ def rate_limit(limit_config_key):
         return decorated_function
     return decorator
 
-@iris.route('/predict', methods=['GET', 'POST'])
+@iris.route('/iris_predict', methods=['GET', 'POST'])
 @login_required
 def iris_predict():
     form = IrisUserForm()
@@ -85,10 +89,11 @@ def iris_predict():
       
         features = np.array([[sepal_length, sepal_width, petal_length, petal_width]])
         pred = model.predict(features)[0]
-        
+        print(f"예측 값 0부터 시작하는 지 확인: {pred}")  # pred는 0부터 시작
         # 1. 'iris' 서비스의 ID를 조회합니다.
         # 만약 서비스가 없으면 None으로 처리하거나 오류를 낼 수 있습니다.
-        #iris_service = Service.query.filter_by(servicename='iris').first()
+        #iris_service = Service.query.filter_by(servicename='iris').first()   # Service 테이블의 servicename이 'iris'인 서비스 조회
+        # 만약 서비스가 없으면 None이 될 수 있으므로, 이 부분을 수정
         #iris_service_id = iris_service.id if iris_service else None
         iris_service_id = 1   # 서비스 번호는 임의로 설정, 향후 다중 서비스인 경우, 해당 ID 할당 예정
 
@@ -103,54 +108,72 @@ def iris_predict():
         )
         db.session.add(new_usage_log)
         db.session.commit()
-        
+
+        # 3. IrisResult 객체 생성 시 service_id에 찾은 값을 할당합니다.
+        new_iris_result = IrisResult(
+            user_id=current_user.id,
+            service_id=iris_service_id,  # 이 부분을 수정
+            sepal_length=sepal_length,
+            sepal_width=sepal_width,
+            petal_length=petal_length,
+            petal_width=petal_width,
+            #predicted_class=TARGET_NAMES[pred-1],  # pred는 1부터 시작하므로 -1
+            predicted_class=TARGET_NAMES[pred],  # pred는 0부터 시작
+            model_version='1.0',  # 모델 버전 정보 추가
+            confirm=False  # 초기 상태는 False로 설정
+        )
+        db.session.add(new_iris_result)
+        db.session.commit()
+
+        # db.session.commit() 이후에 IrisResult의 ID를 확인하고 템플릿에 전달
+        iris_result_id = new_iris_result.id
+        print(f"새로 생성된 IrisResult의 ID: {iris_result_id}")
         return render_template('iris/predict.html',
                                result=TARGET_NAMES[pred],
                                sepal_length=sepal_length, sepal_width=sepal_width,
                                petal_length=petal_length, petal_width=petal_width, form=form,
-                               TARGET_NAMES=TARGET_NAMES)
+                               TARGET_NAMES=TARGET_NAMES, iris_result_id=iris_result_id)
     return render_template('iris/predict.html', form=form)
-
 
 @iris.route('/save_iris_data', methods=['POST'])
 @login_required
 def save_iris_data():
     if request.method == 'POST':
-        sepal_length = request.form.get('sepal_length')
-        sepal_width = request.form.get('sepal_width')
-        petal_length = request.form.get('petal_length')
-        petal_width = request.form.get('petal_width')
-        predicted_class = request.form.get('predicted_class')
+# 폼 데이터 가져오기
+        iris_result_id = request.form.get('iris_result_id')
         confirmed_class = request.form.get('confirmed_class')
 
-        # 'iris' 서비스의 ID를 조회합니다.
-        #iris_service = Service.query.filter_by(servicename='iris').first()
-        #iris_service_id = iris_service.id if iris_service else None
-        iris_service_id = 1 # 서비스 번호는 임의로 설정, 향후 다중 서비스인 경우, 해당 ID 할당 예정
-
-        # service_id가 None이면 오류를 반환합니다.
-        if not iris_service_id:
-            flash('IRIS 서비스 ID를 찾을 수 없습니다.', 'danger')
+        # created_id가 없으면 오류 처리
+        if not iris_result_id:
+            flash('유효한 데이터 ID가 없습니다.', 'danger')
             return redirect(url_for('iris.iris_predict'))
-        
-        new_iris_entry = IrisResult(
-            user_id=current_user.id,
-            service_id=iris_service_id,   
-            sepal_length=float(sepal_length),
-            sepal_width=float(sepal_width),
-            petal_length=float(petal_length),
-            petal_width=float(petal_width),
-            predicted_class=predicted_class,
-            confirmed_class=confirmed_class,
-            confirm=True
-        )
-        db.session.add(new_iris_entry)
-        db.session.commit()
-        
-        flash('데이터가 성공적으로 저장되었습니다.', 'success')
-        return redirect(url_for('iris.iris_predict'))
-    
-    flash('데이터 저장 중 오류가 발생했습니다.', 'danger')
+
+        try:
+            # created_id를 사용하여 IrisResult 레코드 조회
+            # first_or_404()를 사용하면 레코드가 없을 경우 404 에러를 반환
+            iris_result = IrisResult.query.filter_by(id=iris_result_id).first_or_404()
+            
+            # 레코드 업데이트
+            iris_result.confirmed_class = confirmed_class
+            iris_result.confirm = True
+
+            # 변경사항 커밋
+            db.session.commit()
+            # 데이터 업데이트가 성공했음을 확인하는 print 문 추가
+            print(f"IrisResult with ID {iris_result_id} has been successfully updated.")
+            print(f"Updated values: confirmed_class='{iris_result.confirmed_class}', confirm={iris_result.confirm}")
+
+            # 성공 메시지  
+            flash('데이터가 성공적으로 저장되었습니다.', 'success')
+            return redirect(url_for('iris.iris_predict'))
+
+        except Exception as e:
+            db.session.rollback() # 오류 발생 시 롤백
+            flash(f'데이터 저장 중 오류가 발생했습니다: {e}', 'danger')
+            return redirect(url_for('iris.iris_predict'))
+            
+    # POST 요청이 아닌 경우
+    flash('잘못된 접근입니다.', 'danger')
     return redirect(url_for('iris.iris_predict'))
 
 @iris.route('/results')
@@ -158,7 +181,30 @@ def save_iris_data():
 def results():
     # `PredictionResult`의 하위 클래스인 `IrisResult`를 쿼리합니다.
     user_results = IrisResult.query.filter_by(user_id=current_user.id).order_by(IrisResult.created_at.desc()).all()
-    return render_template('iris/user_results.html', title='추론결과', results=user_results)
+    form = EmptyForm() # 빈 폼 객체를 생성
+    return render_template('iris/user_results.html', title='추론결과', results=user_results, form=form) # 템플릿에 form 객체를 전달
+# 화면에서 확인된 결과를 업데이트하는 기능을 추가합니다.
+# 사용자가 결과를 확인하고 품종을 선택할 수 있도록 합니다.
+@iris.route('/confirm_result/<int:result_id>', methods=['POST'])
+@login_required
+def confirm_result(result_id):
+    result = IrisResult.query.get_or_404(result_id)
+    if result.user_id != current_user.id:
+        # 다른 사용자의 결과를 수정하려는 시도 방지
+        abort(403)
+
+    confirmed_class = request.form.get('confirmed_class')
+
+    if confirmed_class in ['setosa', 'versicolor', 'virginica']:
+        result.confirmed_class = confirmed_class
+        result.confirm = True
+        result.confirmed_at = datetime.now()
+        db.session.commit()
+        flash('확인품종이 성공적으로 업데이트되었습니다.', 'success')
+    else:
+        flash('유효하지 않은 품종입니다.', 'danger')
+
+    return redirect(url_for('iris.results'))
 
 @iris.route('/logs')
 @login_required
@@ -207,7 +253,8 @@ def api_predict():
 
     try:
         features = np.array([[sepal_length, sepal_width, petal_length, petal_width]])
-        pred_index = model.predict(features)[0] - 1  # 모델 예측 결과는 1부터 시작하므로 -1
+        #pred_index = model.predict(features)[0] - 1  # 모델 예측 결과는 1부터 시작하므로 -1
+        pred_index = model.predict(features)[0]  # 모델 예측 결과는 0부터 시작
         predicted_class_name = TARGET_NAMES[pred_index]
         
         # UsageLog 객체 생성

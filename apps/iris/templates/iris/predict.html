@@ -12,19 +12,20 @@
                 <div class="row g-3 mb-3">
                     <div class="col-md-6">
                         <label for="sepal_length" class="form-label">세팔 길이 (cm)</label>
-                        <input type="number" step="0.1" class="form-control" id="sepal_length" name="sepal_length" required value="0.0">
+{#                        <input type="number" step="0.1" class="form-control" id="sepal_length" name="sepal_length" required value="0.0">  #}
+                        <input type="number" step="0.1" class="form-control" id="sepal_length" name="sepal_length" required>
                     </div>
                     <div class="col-md-6">
                         <label for="sepal_width" class="form-label">세팔 너비 (cm)</label>
-                        <input type="number" step="0.1" class="form-control" id="sepal_width" name="sepal_width" required value="0.0">
+                        <input type="number" step="0.1" class="form-control" id="sepal_width" name="sepal_width" required>
                     </div>
                     <div class="col-md-6">
                         <label for="petal_length" class="form-label">페탈 길이 (cm)</label>
-                        <input type="number" step="0.1" class="form-control" id="petal_length" name="petal_length" required value="0.0">
+                        <input type="number" step="0.1" class="form-control" id="petal_length" name="petal_length" required>
                     </div>
                     <div class="col-md-6">
                         <label for="petal_width" class="form-label">페탈 너비 (cm)</label>
-                        <input type="number" step="0.1" class="form-control" id="petal_width" name="petal_width" required value="0.0">
+                        <input type="number" step="0.1" class="form-control" id="petal_width" name="petal_width" required>
                     </div>
                 </div>
 
@@ -41,6 +42,7 @@
             </div>
         <form method="POST" action="{{ url_for('iris.save_iris_data') }}">
             {{ form.csrf_token }} 
+            <input type="hidden" name="iris_result_id" value="{{ iris_result_id }}">
             <input type="hidden" name="sepal_length" value="{{ sepal_length }}">
             <input type="hidden" name="sepal_width" value="{{ sepal_width }}">
             <input type="hidden" name="petal_length" value="{{ petal_length }}">
