@@ -3,7 +3,12 @@
 {% block title %}로그 목록{% endblock %}
 {% block iris_content %}
     <div class="container mt-4"> {# 전체 내용을 감싸는 부트스트랩 컨테이너, 위쪽 여백(margin-top) 4칸 #}
-        <h1 class="mb-4">로그 이력</h1> {# 제목에 아래쪽 여백(margin-bottom) 4칸 #}
+        {# <h1 class="mb-4">로그 이력</h1> #} {# 제목에 아래쪽 여백(margin-bottom) 4칸 #} 
+        <div class="row">
+        <div class="col-md-12">
+            <h6 class="alert alert-primary">로그 결과</h6>
+        </div>
+        </div>
         {% if results %}
             {# 테이블을 반응형으로 만들어 작은 화면에서도 잘 보이게 함 #}
             <div class="table-responsive">
@@ -13,9 +18,11 @@
                             <th>ID</th>
                             <th>로그타입</th>
                             <th>엔드포인트</th>
-                            <th>로그시간</th>
+                            <th>추론시각</th>
+                            <th>로그시각</th>
                             <th>원격주소</th>
                             <th>응답상태</th>
+                            <th>로그상태</th>                            
                         </tr>
                     </thead>
                     <tbody>
@@ -25,9 +32,11 @@
                             {# 로그 타입에 따라 색상을 다르게 보여줄 수 있도록 클래스 추가 #}
                             <td><span class="badge {% if result.usage_type == 'UsageType.LOGIN' %}bg-success{% elif result.usage_type == 'UsageType.API_KEY' %}bg-danger{% else %}bg-secondary{% endif %}">{{ result.usage_type }}</span></td>   
                             <td>{{ result.endpoint }}</td>
+                            <td>{{ result.inference_timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</td>
                             <td>{{ result.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</td>
                             <td>{{ result.remote_addr }}</td>
                             <td>{{ result.response_status_code }}</td>
+                            <td>{{ result.log_status }}</td>
                         </tr>
                         {% endfor %}
                     </tbody>

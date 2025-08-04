@@ -1,8 +1,52 @@
+{# apps/iris/templates/iris/user_results.html #}
 {% extends 'iris_base.html' %}
-{% block title %}추론 결과{% endblock %}
+{% block title %}
+{% endblock %}
 {% block iris_content %}
-    <div class="container mt-4">
-        <h1 class="mb-4">내 추론 결과</h1>
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-12">
+            <h6 class="alert alert-primary">추론 결과</h6>
+        </div>
+    </div>
+{# 검색 폼과 서비스 생성 버튼을 포함하는 하나의 행 #}
+<div class="row mb-3 align-items-end"> {# align-items-end: 행 내부 요소를 아래쪽에 정렬합니다. #}
+    {# 검색 폼 영역: 데스크톱에서는 9/12 컬럼, 모바일에서는 12/12 컬럼 #}
+    <div class="col-md-9 col-12">
+        {# <form action="{{ url_for('iris.results') }}" method="GET"> #}
+        <form action="#" method="GET">
+            <div class="row g-2"> {# 각 검색 필드와 버튼 간의 간격(gutter)을 설정 #}
+                <div class="col-md-4 col-12">
+                    <input type="search" name="search" class="form-control" placeholder="예측 품종, 확인 품종 검색"
+                           value="{{ search_query if search_query }}" aria-label="Search">
+                </div>
+                <div class="col-md-2 col-6">
+                    <select name="confirm" class="form-select">
+                        <option value="">동작 상태</option>
+                        <option value="true" {% if confirm_query == 'true' %}selected{% endif %}>확인완료</option>
+                        <option value="false" {% if confirm_query == 'false' %}selected{% endif %}>미확인</option>
+                    </select>
+                </div>
+                <div class="col-md-2 col-12">
+                    <input type="date" name="created_at" class="form-control" placeholder="추론일"
+                           value="{{ created_at_query if created_at_query }}" aria-label="Registration Date">
+                </div>
+                <div class="col-md-2 col-12">
+                    <input type="date" name="confirmed_at" class="form-control" placeholder="확인일"
+                           value="{{ confirmed_at_query if confirmed_at_query }}" aria-label="Confirm Date">
+                </div>
+                <div class="col-md-2 col-12 d-grid"> {# d-grid: 모바일에서 버튼이 부모 컬럼의 전체 너비를 차지하도록 함 #}
+                    <button class="btn btn-primary" type="submit">검색</button>
+                </div>
+            </div>
+        </form>
+    </div>
+    {# "다운로드" 버튼 영역: 데스크톱에서는 3/12 컬럼, 모바일에서는 12/12 컬럼 #}
+    <div class="col-md-3 col-12 mt-2 mt-md-0 d-grid d-md-block text-md-end">
+        {# <a href="{{ url_for('adminx.create_service') }}" class="btn btn-primary user-create-btn">서비스 생성</a> #}
+        <a href="#" class="btn btn-primary user-create-btn">다운로드</a>
+    </div>
+</div>
 
         {% if results %}
             <div class="table-responsive">
@@ -19,6 +63,7 @@
                             <th>추론시간</th>
                             <th>확인시간</th>
                             <th>동작</th>
+                            <th>삭제</th> {# 삭제 컬럼 헤더 추가 #}                            
                         </tr>
                     </thead>
                     <tbody>
@@ -56,16 +101,78 @@
                                     <span class="badge bg-secondary">확인 완료</span>
                                 {% endif %}
                             </td>
+                            <td>
+                                {# 삭제 버튼 추가 #}
+                                <form action="{{ url_for('iris.delete_result', result_id=result.id) }}" method="POST" class="d-inline" onsubmit="return confirm('정말로 이 추론 결과를 삭제하시겠습니까?');">
+                                    {{ form.csrf_token }} {# CSRF 토큰 추가 #}
+                                    <button type="submit" class="btn btn-danger btn-sm">삭제</button>
+                                </form>
+                            </td>                            
                         </tr>
                         {% endfor %}
                     </tbody>
                 </table>
             </div>
+
+
+{# 페이지네이션 링크 #}
+<nav aria-label="Page navigation">
+    <ul class="pagination justify-content-center">
+        {% if pagination.has_prev %}
+        <li class="page-item">
+            <a class="page-link" href="{{ url_for('iris.results', page=pagination.prev_num, search=search_query, confirm=confirm_query, created_at=created_at_query, confirmed_at=confirmed_at_query) }}" aria-label="Previous">
+                <span aria-hidden="true">&laquo;</span>
+            </a>
+        </li>
+        {% else %}
+        <li class="page-item disabled">
+            <span class="page-link">&laquo;</span>
+        </li>
+        {% endif %}
+        {% for p in pagination.iter_pages() %}
+            {% if p %}
+                {% if p == pagination.page %}
+                <li class="page-item active" aria-current="page"><span class="page-link">{{ p }}</span></li>
+                {% else %}
+                <li class="page-item"><a class="page-link" href="{{ url_for('iris.results', page=p, search=search_query, confirm=confirm_query, created_at=created_at_query, confirmed_at=confirmed_at_query) }}">{{ p }}</a></li>
+                {% endif %}
+            {% else %}
+                <li class="page-item disabled"><span class="page-link">...</span></li>
+            {% endif %}
+        {% endfor %}
+        {% if pagination.has_next %}
+        <li class="page-item">
+            <a class="page-link" href="{{ url_for('iris.results', page=pagination.next_num, search=search_query, confirm=confirm_query, created_at=created_at_query, confirmed_at=confirmed_at_query) }}" aria-label="Next">
+                <span aria-hidden="true">&raquo;</span>
+            </a></li>
+        {% else %}
+        <li class="page-item disabled">
+            <span class="page-link">&raquo;</span></li>
+        {% endif %}
+    </ul>
+</nav>
         {% else %}
             <div class="alert alert-info" role="alert">
                 AI 추론 결과가 없습니다. <a href="{{ url_for('iris.iris_predict') }}" class="alert-link">지금 붓꽃 분류하기</a>
             </div>
         {% endif %}
     </div>
+
+
+<style>
+/* 모바일 (기본값) */
+.user-create-btn {
+    width: 100%; /* 모바일에서 전체 폭 */
+}
+
+/* Medium (md) 이상 화면 (768px 이상) */
+@media (min-width: 768px) {
+    .user-create-btn {
+        width: auto; /* 데스크톱에서 내용에 맞춰 자동 크기 */
+    }
+}
+</style>
 {% endblock %}
+
+
 

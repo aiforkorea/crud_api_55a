@@ -128,15 +128,20 @@ class UsageLog(db.Model):
     api_key_id = db.Column(db.Integer, db.ForeignKey('api_keys.id'), index=True)
     endpoint = db.Column(db.String(120), nullable=False)
     usage_type = db.Column(db.Enum(UsageType), nullable=False)
+    log_status = db.Column(db.String(10), default="추론", nullable=False) # '추론', '삭제', '로그인' 등
     usage_count = db.Column(db.Integer, default=1, nullable=False) # 각 로그 항목은 기본적으로 1회 사용
     login_confirm = db.Column(db.String(10), nullable=True) # 로그인 여부 확인용 (예: 'success', 'fail')
-    timestamp = db.Column(db.DateTime, default=datetime.now, index=True)
+    inference_timestamp = db.Column(db.DateTime, index=True)  # 추론 시각
+    timestamp = db.Column(db.DateTime, default=datetime.now, index=True) # 로그 시각
     last_used = db.Column(db.DateTime, nullable=False, default=datetime.now) # 마지막 사용 시간
     remote_addr = db.Column(db.String(45))
     request_data_summary = db.Column(db.Text)
     response_status_code = db.Column(db.Integer)
+    # 새로 추가될 부분: 어떤 PredictionResult/IrisResult와 관련된 로그인지 저장
+    prediction_result_id = db.Column(db.Integer, db.ForeignKey('iris_results.id'), nullable=True, index=True) # IrisResult 테이블명에 맞게 수정
+    # prediction_result = db.relationship('IrisResult', backref='usage_logs', lazy=True) # 관계 설정 (필요시)
     def __repr__(self) -> str:
-        return f"<UsageLog(api_service_id={self.service_id}, usage_type='{self.usage_type}', timestamp={self.timestamp})>"
+        return f"<UsageLog(service_id={self.service_id}, usage_type='{self.usage_type}', timestamp={self.timestamp})>"
 # ----------- 예측 결과 기본 모델 (PredictionResult) -----------
 class PredictionResult(db.Model):
     __tablename__ = 'prediction_results'
