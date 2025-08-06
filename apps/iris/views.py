@@ -230,6 +230,7 @@ def results():
     page = request.args.get('page', 1, type=int) # 페이지 번호 가져오기
 
     print(f"search_query: {search_query}")
+    print(f"created_at_query: {created_at_query}")
 
     # 기본 쿼리 (현재 사용자의 결과만)
     query = IrisResult.query.filter_by(user_id=current_user.id)
