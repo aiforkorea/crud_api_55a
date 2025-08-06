@@ -16,7 +16,6 @@
                     <thead class="table-dark"> {# 테이블 헤더를 어둡게 #}
                         <tr>
                             <th>ID</th>
-                            <th>추론ID</th>  {# 추가 #}
                             <th>로그타입</th>
                             <th>엔드포인트</th>
                             <th>추론시각</th>
@@ -30,14 +29,6 @@
                         {% for result in results %}
                         <tr>
                             <td>{{ result.id }}</td>
-                            {# result의 prediction_result__id 값이 있으면 값 인쇄, 없으면 - 인쇄 #}
-                            <td>
-                                {% if result.prediction_result_id %}
-                                    {{ result.prediction_result_id }}
-                                {% else %}
-                                    -
-                                {% endif %}
-                            </td>
                             {# 로그 타입에 따라 색상을 다르게 보여줄 수 있도록 클래스 추가 #}
                             <td><span class="badge {% if result.usage_type == 'UsageType.LOGIN' %}bg-success{% elif result.usage_type == 'UsageType.API_KEY' %}bg-danger{% else %}bg-secondary{% endif %}">{{ result.usage_type }}</span></td>   
                             <td>{{ result.endpoint }}</td>

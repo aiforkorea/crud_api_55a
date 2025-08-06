@@ -25,7 +25,7 @@ from apps.config import Config
 #TARGET_NAMES = Config.IRIS_LABELS   # 라벨 읽기
 
 #0: Iris-Setosa
-#1: Iris-Versicolor
+#1: Iris-Versicolour
 #2: Iris-Virginica
 
 # AI 사용량 제한 데코레이터
@@ -373,7 +373,6 @@ def logs():
     print("logs 시작")
     # UsageLog 모델은 변경사항이 없으므로 그대로 사용합니다.
     user_logs = UsageLog.query.filter_by(user_id=current_user.id).order_by(UsageLog.timestamp.desc()).all()
-    print(f"user_logs: {user_logs}")
     return render_template('iris/user_logs.html', title='AI로그이력', results=user_logs)
 
 @iris.route('/api/predict', methods=['POST'])
@@ -431,8 +430,7 @@ def api_predict():
                 "message": "This prediction already exists.",
                 "predicted_class": existing_result.predicted_class,
                 "confirmed_class": existing_result.confirmed_class,
-                "created_at": existing_result.created_at.isoformat() if existing_result.created_at else None,
-                #"created_at": existing_result.created_at,
+                "created_at": existing_result.created_at,
                 "sepal_length": sepal_length,
                 "sepal_width": sepal_width,
                 "petal_length": petal_length,
@@ -446,58 +444,46 @@ def api_predict():
         pred_index = model.predict(features)[0]  # 모델 예측 결과는 0부터 시작
         predicted_class_name = TARGET_NAMES[pred_index]
         
-        try:
-            # 1. IrisResult 객체 생성
-            new_iris_entry = IrisResult(
-                user_id=api_key_entry.user_id,
-                service_id=iris_service_id, # service_id 할당
-                api_key_id=api_key_entry.id,
-                sepal_length=sepal_length,
-                sepal_width=sepal_width,
-                petal_length=petal_length,
-                petal_width=petal_width,
-                predicted_class=predicted_class_name,
-                model_version='1.0',
-                confirmed_class=None,
-                confirm=False,
-                type='iris', # IrisResult에 type 컬럼이 있다면 추가
-                redundacy=False # 중복이 아니므로 False로 설정
-            )
-            db.session.add(new_iris_entry)
-            # 2. flush()를 통해 new_iris_entry의 ID를 미리 가져옵니다.
-            #    아직 커밋은 하지 않아, 트랜잭션은 유지됩니다.
-            db.session.flush() 
+        # UsageLog 객체 생성
+        new_usage_log = UsageLog(
+            user_id=api_key_entry.user_id,
+            service_id=iris_service_id, # service_id 할당
+            api_key_id=api_key_entry.id,
+            usage_type=UsageType.API_KEY,
+            endpoint=request.path,
+            inference_timestamp=datetime.now(), # 추론시각을 별도로 기록
+            remote_addr=request.remote_addr,
+            response_status_code=200,
+            request_data_summary=str(data)[:200]
+        )
+        db.session.add(new_usage_log)
+        
+        # IrisResult (이전 IRIS) 객체 생성
+        new_iris_entry = IrisResult(
+            user_id=api_key_entry.user_id,
+            service_id=iris_service_id, # service_id 할당
+            api_key_id=api_key_entry.id,
+            sepal_length=sepal_length,
+            sepal_width=sepal_width,
+            petal_length=petal_length,
+            petal_width=petal_width,
+            predicted_class=predicted_class_name,
+            model_version='1.0',
+            confirmed_class=None,
+            confirm=False,
+            type='iris', # IrisResult에 type 컬럼이 있다면 추가
+            redundacy=False # 중복이 아니므로 False로 설정
+        )
+        db.session.add(new_iris_entry)
+        db.session.commit()
 
-            print(f"new_iris_entry.id: {new_iris_entry.id}")
-            # 3. UsageLog 객체 생성 시 위에서 얻은 ID를 사용합니다.
-            # UsageLog 객체 생성
-            new_usage_log = UsageLog(
-                user_id=api_key_entry.user_id,
-                service_id=iris_service_id, # service_id 할당
-                api_key_id=api_key_entry.id,
-                usage_type=UsageType.API_KEY,
-                endpoint=request.path,
-                inference_timestamp=datetime.now(), # 추론시각을 별도로 기록
-                remote_addr=request.remote_addr,
-                response_status_code=200,
-                request_data_summary=str(data)[:200],
-                prediction_result_id=new_iris_entry.id # 여기를 추가!
-            )
-            db.session.add(new_usage_log)
-            # 4. 두 객체를 하나의 트랜잭션으로 한 번에 커밋합니다.
-            db.session.commit()
-
-            return jsonify({
-                "predicted_class": predicted_class_name,
-                "sepal_length": sepal_length,
-                "sepal_width": sepal_width,
-                "petal_length": petal_length,
-                "petal_width": petal_width
-            }), 200
-
-        except Exception as e:
-            # 오류 발생 시, 모든 변경 사항을 되돌립니다.
-            db.session.rollback()
+        return jsonify({
+            "predicted_class": predicted_class_name,
+            "sepal_length": sepal_length,
+            "sepal_width": sepal_width,
+            "petal_length": petal_length,
+            "petal_width": petal_width
+        }), 200
 
     except Exception as e:
         # 광범위한 예외 처리를 하나로 통합
