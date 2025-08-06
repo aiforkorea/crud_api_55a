@@ -82,6 +82,7 @@ def rate_limit(limit_config_key):
 @iris.route('/iris_predict', methods=['GET', 'POST'])
 @login_required
 def iris_predict():
+    print("predict 시작")
     form = IrisUserForm()
     if form.validate_on_submit():
         sepal_length = form.sepal_length.data
@@ -220,12 +221,15 @@ def results():
 @iris.route('/results')
 @login_required
 def results():
+    print("results 시작")
     # 검색 쿼리 파라미터 가져오기
     search_query = request.args.get('search', '', type=str)
     confirm_query = request.args.get('confirm', '', type=str)
     created_at_query = request.args.get('created_at', '', type=str)
     confirmed_at_query = request.args.get('confirmed_at', '', type=str)
     page = request.args.get('page', 1, type=int) # 페이지 번호 가져오기
+
+    print(f"search_query: {search_query}")
 
     # 기본 쿼리 (현재 사용자의 결과만)
     query = IrisResult.query.filter_by(user_id=current_user.id)
