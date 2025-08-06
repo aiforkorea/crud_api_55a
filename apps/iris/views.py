@@ -225,68 +225,83 @@ def results():
     # 검색 쿼리 파라미터 가져오기
     search_query = request.args.get('search', '', type=str)
     confirm_query = request.args.get('confirm', '', type=str)
-    created_at_query = request.args.get('created_at', '', type=str)
-    confirmed_at_query = request.args.get('confirmed_at', '', type=str)
-    page = request.args.get('page', 1, type=int) # 페이지 번호 가져오기
-
-    print(f"search_query: {search_query}")
-    print(f"created_at_query: {created_at_query}")
+    date_filter_type = request.args.get('date_filter_type', '', type=str)
+    start_date_str = request.args.get('start_date', '', type=str)
+    end_date_str = request.args.get('end_date', '', type=str)
+    page = request.args.get('page', 1, type=int)
 
     # 기본 쿼리 (현재 사용자의 결과만)
     query = IrisResult.query.filter_by(user_id=current_user.id)
 
-    # 검색어 필터링
-    if search_query:
-        query = query.filter(
-            (IrisResult.predicted_class.ilike(f'%{search_query}%')) |
-            (IrisResult.confirmed_class.ilike(f'%{search_query}%'))
-        )
-
-    # 확인 상태 필터링
-    if confirm_query:
-        if confirm_query == 'true':
-            query = query.filter(IrisResult.confirm == True)
-        elif confirm_query == 'false':
-            query = query.filter(IrisResult.confirm == False)
-
-    # 추론일 필터링
-    if created_at_query:
-        try:
-            # 날짜 문자열을 datetime 객체로 변환 (날짜만 비교)
-            created_date = datetime.strptime(created_at_query, '%Y-%m-%d').date()
-            query = query.filter(func.DATE(IrisResult.created_at) == created_date)
-        except ValueError:
-            flash('유효하지 않은 추론일 형식입니다.', 'danger')
-
-    # 확인일 필터링
-    if confirmed_at_query:
-        try:
-            # 날짜 문자열을 datetime 객체로 변환 (날짜만 비교)
-            confirmed_date = datetime.strptime(confirmed_at_query, '%Y-%m-%d').date()
-            query = query.filter(func.DATE(IrisResult.confirmed_at) == confirmed_date)
-        except ValueError:
-            flash('유효하지 않은 확인일 형식입니다.', 'danger')
-
     # 결과 정렬 (최신 순)
     query = query.order_by(IrisResult.created_at.desc())
 
-    # 페이지네이션 적용
-    per_page = 10 # 한 페이지에 보여줄 항목 수
-    pagination = query.paginate(page=page, per_page=per_page, error_out=False)
-    user_results = pagination.items # 현재 페이지의 항목들
+    # 날짜 필터 검사
+    invalid_date_range = False  # 유효하지 않은 날짜 범위를 판별하는 플래그 변수
+    if start_date_str or end_date_str:
+        try:
+            # 문자열을 날짜로 변환
+            start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date() if start_date_str else None
+            end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date() if end_date_str else None
 
-    form = EmptyForm() # 폼 객체는 삭제 버튼의 CSRF 토큰을 위해 필요
+            # 날짜 범위 검사
+            if start_date and end_date and start_date > end_date:
+                flash('시작일은 종료일보다 이전이어야 합니다.', 'danger')
+                invalid_date_range = True  # 유효하지 않은 날짜 범위 플래그 활성화
+            else:
+                filter_col = IrisResult.confirmed_at if date_filter_type == 'confirmed_at' else IrisResult.created_at
+                if start_date and end_date:
+                    next_day = end_date + timedelta(days=1)
+                    query = query.filter(filter_col >= start_date, filter_col < next_day)
+                elif start_date:
+                    query = query.filter(filter_col >= start_date)
+                elif end_date:
+                    next_day = end_date + timedelta(days=1)
+                    query = query.filter(filter_col < next_day)
+        except ValueError:
+            flash('날짜 입력이 잘못되었습니다.', 'danger')
+            invalid_date_range = True  # 유효하지 않은 날짜 범위 플래그 활성화
+
+    # 날짜 범위가 유효하지 않은 경우 검색 쿼리를 중단
+    if invalid_date_range:
+        # 빈 결과를 반환합니다.
+        pagination = None
+        user_results = []
+    else:
+        # 검색어(예측, 확인 품종)
+        if search_query:
+            query = query.filter(
+                (IrisResult.predicted_class.ilike(f'%{search_query}%')) |
+                (IrisResult.confirmed_class.ilike(f'%{search_query}%'))
+            )
+
+        # 동작 상태(확인 여부)
+        if confirm_query:
+            if confirm_query == 'true':
+                query = query.filter(IrisResult.confirm == True)
+            elif confirm_query == 'false':
+                query = query.filter(IrisResult.confirm == False)
+
+        query = query.order_by(IrisResult.created_at.desc())
+
+        # 페이지네이션 적용
+        per_page = 10  # 한 페이지에 보여줄 항목 수
+        pagination = query.paginate(page=page, per_page=per_page, error_out=False)
+        user_results = pagination.items  # 현재 페이지의 항목들
+
+    form = EmptyForm()  # 폼 객체는 삭제 버튼의 CSRF 토큰을 위해 필요
 
     return render_template(
         'iris/user_results.html',
         title='추론결과',
         results=user_results,
         form=form,
-        pagination=pagination, # pagination 객체 전달
-        search_query=search_query, # 검색 쿼리 전달
-        confirm_query=confirm_query, # 확인 상태 쿼리 전달
-        created_at_query=created_at_query, # 추론일 쿼리 전달
-        confirmed_at_query=confirmed_at_query # 확인일 쿼리 전달
+        pagination=pagination,  # pagination 객체 전달
+        search_query=search_query,  # 검색 쿼리 전달
+        confirm_query=confirm_query,  # 확인 상태 쿼리 전달
+        date_filter_type=date_filter_type,  # 추가된 부분
+        start_date=start_date_str,  # 추가된 부분
+        end_date=end_date_str  # 추가된 부분
     )
 
 # 화면에서 확인된 결과를 업데이트하는 기능을 추가합니다.
