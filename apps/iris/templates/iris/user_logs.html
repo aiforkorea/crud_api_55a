@@ -16,6 +16,8 @@
                     <thead class="table-dark"> {# 테이블 헤더를 어둡게 #}
                         <tr>
                             <th>ID</th>
+                            <th>사용자ID</th>  {# 추가 #}
+                            <th>서비스ID</th>  {# 추가 #}
                             <th>추론ID</th>  {# 추가 #}
                             <th>로그타입</th>
                             <th>엔드포인트</th>
@@ -30,6 +32,8 @@
                         {% for result in results %}
                         <tr>
                             <td>{{ result.id }}</td>
+                            <td>{{ result.user_id }}</td>
+                            <td>{{ result.service_id }}</td>
                             {# result의 prediction_result__id 값이 있으면 값 인쇄, 없으면 - 인쇄 #}
                             <td>
                                 {% if result.prediction_result_id %}

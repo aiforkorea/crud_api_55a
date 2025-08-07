@@ -2,7 +2,7 @@
 from flask import Flask, flash, redirect, request, render_template, jsonify, abort, current_app, url_for, g
 import pickle, os
 import logging, functools
-from sqlalchemy import func
+from sqlalchemy import desc, func
 
 from apps.extensions import csrf
 # apps.dbmodels 에서 User, APIKey, UsageLog, UsageType 등을 가져오고
@@ -189,6 +189,7 @@ def save_iris_data():
             # 레코드 업데이트
             iris_result.confirmed_class = confirmed_class
             iris_result.confirm = True
+            iris_result.confirmed_at = datetime.now()
 
             # 변경사항 커밋
             db.session.commit()
@@ -314,19 +315,67 @@ def results():
 @iris.route('/confirm_result/<int:result_id>', methods=['POST'])
 @login_required
 def confirm_result(result_id):
+    # 1. 레코드 조회 
     result = IrisResult.query.get_or_404(result_id)
+    print(f"result: {result}")
+    # 2. 신원/권한 확인 + 레코드 존재 확인
     if result.user_id != current_user.id:
         # 다른 사용자의 결과를 수정하려는 시도 방지
         abort(403)
-
+    # 3. 신규 변경 항목값 확보
     confirmed_class = request.form.get('confirmed_class')
 
     if confirmed_class in ['setosa', 'versicolor', 'virginica']:
+        # 4. 추론 업데이트 처리(필드값 수정)
         result.confirmed_class = confirmed_class
         result.confirm = True
         result.confirmed_at = datetime.now()
-        db.session.commit()
-        flash('확인품종이 성공적으로 업데이트되었습니다.', 'success')
+        db.session.flush()                        # 변경사항을 데이터베이스에 반영
+
+        # 5. 로그 처리
+        try:
+            # 1. 추론 ID 중에서 가장 최근 UsageLog 레코드 조회
+            # 해당 IrisResult와 연결된 가장 최근 UsageLog를 찾기
+            # query에 조건 (filter_by)과 정렬(order_by)을 추가해 가장 최근 레코드를 찾음
+            recent_log = (
+                UsageLog.query
+                .filter_by(prediction_result_id=result.id)  # prediction_result_id(추론ID)가 result.id 인 레코드 필터
+                .order_by(desc(UsageLog.timestamp))         # timestamp 내림차순으로 정렬
+                .first()                                    # 첫 번째 레코드 (가장 최근 레코드)만 가져옴
+            )
+            print(f"recent_log: {recent_log}")
+       
+            # recent_log 확인
+            if recent_log:
+                print(f"Recent log found: {recent_log.timestamp}")
+            else:
+                print("No logs found for this prediction_result_id.")
+ 
+            # 2. 신규 UsageLog 객체 생성
+
+            new_usage_log = UsageLog(
+                user_id=recent_log.user_id,       # recent_log와 동일
+                service_id=recent_log.service_id, # recent_log와 동일
+                api_key_id=recent_log.service_id, # recent_log와 동일
+                endpoint=request.path,            # iris.confirm_result, iris/confirm_result/(result_id를 문자로 표시)
+                usage_type=UsageType.WEB_UI,
+                log_status='추론확인',             # 추론 -> 추론확인 -> (추론확인한 것을)수정 -> 추론삭제
+                inference_timestamp=recent_log.inference_timestamp, # 추론 확인 시각을 recent_log의 추론시각으로 기록(추후 삭제 고려)
+                #last_used 마지막 사용 시간이므로, recent_log.inference_timestamp
+                remote_addr=request.remote_addr,  # IP 주소
+                #request_data_summary  # 필요없음
+                response_status_code = 200,
+                prediction_result_id=recent_log.prediction_result_id # recent_log와 동일
+            )
+            db.session.add(new_usage_log)
+            # 4. 두 객체를 하나의 트랜잭션으로 한 번에 커밋합니다.
+            db.session.commit()
+
+            flash('추론 확인 및 관련 로그가 성공적으로 처리되었습니다.', 'success')
+        except Exception as e:
+            db.session.rollback()
+            flash(f'결과 입력 중 오류가 발생했습니다: {e}', 'danger')
+
     else:
         flash('유효하지 않은 품종입니다.', 'danger')
 
@@ -461,7 +510,7 @@ def api_predict():
                 confirmed_class=None,
                 confirm=False,
                 type='iris', # IrisResult에 type 컬럼이 있다면 추가
-                redundacy=False # 중복이 아니므로 False로 설정
+                redundancy=False # 중복이 아니므로 False로 설정
             )
             db.session.add(new_iris_entry)
             # 2. flush()를 통해 new_iris_entry의 ID를 미리 가져옵니다.

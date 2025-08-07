@@ -8,7 +8,7 @@ class IrisResult(PredictionResult):
     sepal_width = db.Column(db.Float, nullable=False)
     petal_length = db.Column(db.Float, nullable=False)
     petal_width = db.Column(db.Float, nullable=False)
-    redundacy = db.Column(db.Boolean, default=False) # 레코드값이 같은 경우, 중복된 컬럼으로 표시
+    redundancy = db.Column(db.Boolean, default=False) # 레코드값이 같은 경우, 중복된 컬럼으로 표시
    
     __mapper_args__ = {
         'polymorphic_identity': 'iris'

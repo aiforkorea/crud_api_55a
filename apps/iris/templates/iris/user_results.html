@@ -71,6 +71,7 @@
                     <thead class="table-dark">
                         <tr>
                             <th>ID</th>
+                            <th>사용자</th>
                             <th>꽃받침길이</th>
                             <th>꽃받침너비</th>
                             <th>꽃잎길이</th>
@@ -87,6 +88,7 @@
                         {% for result in results %}
                         <tr>
                             <td>{{ result.id }}</td>
+                            <td>{{ result.user_id }}</td>
                             <td>{{ result.sepal_length }}</td>
                             <td>{{ result.sepal_width }}</td>
                             <td>{{ result.petal_length }}</td>
@@ -96,11 +98,18 @@
                                 {% if result.confirmed_class %}
                                     <span class="badge {% if result.confirmed_class == 'setosa' %}bg-success{% elif result.confirmed_class == 'versicolor' %}bg-warning text-dark{% elif result.confirmed_class == 'virginica' %}bg-danger{% else %}bg-secondary{% endif %}">{{ result.confirmed_class }}</span>
                                 {% else %}
-                                    N/A
+                                    미확인
                                 {% endif %}
                             </td>
                             <td>{{ result.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
-                            <td>{{ result.confirmed_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                            <td>  {# 초기값 없음=None #}
+                                {% if result.confirmed_at %}
+                                    {{ result.confirmed_at.strftime('%Y-%m-%d %H:%M:%S') }}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                            {# 동일  {{ result.confirmed_at.strftime('%Y-%m-%d %H:%M:%S') if result.confirmed_at else "미확인" }}  #}
                             <td>
                                 {% if not result.confirm %}
                                     <form action="{{ url_for('iris.confirm_result', result_id=result.id) }}" method="POST" class="d-inline">

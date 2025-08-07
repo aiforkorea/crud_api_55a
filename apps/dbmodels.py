@@ -137,7 +137,7 @@ class UsageLog(db.Model):
     remote_addr = db.Column(db.String(45))
     request_data_summary = db.Column(db.Text)
     response_status_code = db.Column(db.Integer)
-    # 새로 추가될 부분: 어떤 PredictionResult/IrisResult와 관련된 로그인지 저장
+    # (추론 ID)새로 추가될 부분: 어떤 PredictionResult/IrisResult와 관련된 로그인지 저장
     prediction_result_id = db.Column(db.Integer, db.ForeignKey('iris_results.id'), nullable=True, index=True) # IrisResult 테이블명에 맞게 수정
     # prediction_result = db.relationship('IrisResult', backref='usage_logs', lazy=True) # 관계 설정 (필요시)
     def __repr__(self) -> str:
@@ -154,7 +154,7 @@ class PredictionResult(db.Model):
     confirmed_class = db.Column(db.String(50))
     confirm = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.now, index=True)
-    confirmed_at = db.Column(db.DateTime, default=datetime.now, index=True)
+    confirmed_at = db.Column(db.DateTime, index=True)  # default=datetime.now 설정하면 안됨
     # 다형성 설정: 어떤 예측 결과 유형인지 구분
     # polymorphic_on과 polymorphic_identity를 사용한 싱글 테이블 상속(Single Table Inheritance) 구조
     # 이를 통해 IrisResult와 LoanResult 같은 특정 서비스의 예측 결과를 유연하게 확장,SQLAlchemy의 고급 기능
